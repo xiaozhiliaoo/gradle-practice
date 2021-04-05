@@ -1,6 +1,18 @@
-plugins {
-    id 'java'
+buildscript {
+    repositories {
+        maven { url "file://$projectDir/../../repo" }
+        mavenCentral()
+    }
+
+    dependencies {
+        //classpath 'org.plugins:hi-plugin:1.0'
+    }
 }
+
+
+//apply plugin: 'hi-plugin'
+apply plugin: 'java'
+
 
 group 'org.example'
 
@@ -9,10 +21,51 @@ repositories {
 }
 
 dependencies {
+    compile project(':model')
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
 }
 
 test {
     useJUnitPlatform()
+    systemProperty 'items', '200'
+    //jvmArgs '-Xms128m', '-Xmx256m', '-XX:MaxPermSize=128m'
+}
+
+
+test.afterSuite { TestDescriptor suite, TestResult result ->
+    if (!suite.parent && result.getTestCount() > 0) {
+        long elapsedTestTime = result.getEndTime() - result.getStartTime()
+       println "Elapsed time for execution of " + elapsedTestTime
+    }
+}
+
+
+test.addTestListener(new NotificationTestListener(project))
+
+class NotificationTestListener implements TestListener {
+    final Project project
+
+    NotificationTestListener(Project project) {
+        this.project = project
+    }
+
+
+
+    @Override
+    void afterSuite(TestDescriptor suite, TestResult result) {
+        if (!suite.parent && result.getTestCount() > 0) {
+            long elapsedTestTime = result.getEndTime() - result.getStartTime()
+            println "Elapsed time for execution of" + elapsedTestTime
+        }
+    }
+
+    @Override
+    void afterTest(TestDescriptor testDescriptor, TestResult result) {}
+
+    @Override
+    void beforeSuite(TestDescriptor suite) {}
+
+    @Override
+    void beforeTest(TestDescriptor testDescriptor) {}
 }

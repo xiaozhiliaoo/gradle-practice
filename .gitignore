@@ -17,3 +17,7 @@ gradlew
 gradlew.bat
 /.gradle/
 /build/
+/model/build/
+/repository/build/
+/web/build/
+/plugins/build/
