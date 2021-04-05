@@ -35,11 +35,23 @@ ProjectVersion readVersion() {
     new ProjectVersion(versionProps.major.toInteger(), versionProps.minor.toInteger(), versionProps.release.toBoolean())
 }
 
+gradle.taskGraph.beforeTask { Task task ->
+    println "executing $task ..."
+}
+
+gradle.taskGraph.afterTask { Task task, TaskState state ->
+    if (state.failure) {
+        println "FAILED"
+    } else {
+        println "done"
+    }
+}
+
 
 gradle.taskGraph.whenReady { TaskExecutionGraph taskGraph ->
     //查看执行图是否包含release task
     if (taskGraph.hasTask(release)) {
-        print "release whenReady invoke...."
+        println "release whenReady invoke...."
         if (!version.release) {
             version.release = true
             ant.propertyfile(file: versionFile) {
@@ -55,7 +67,7 @@ class ReleaseVersionListener implements TaskExecutionGraphListener {
     @Override
     void graphPopulated(TaskExecutionGraph taskGraph) {
         if (taskGraph.hasTask(releaseTaskPath)) {
-            print "ReleaseVersionListener invoke..."
+            println "ReleaseVersionListener invoke..."
             List<Task> allTasks = taskGraph.allTasks
             Task releaseTask = allTasks.find { it.path == releaseTaskPath }
             Project project = releaseTask.project
@@ -93,12 +105,18 @@ task backupReleaseDistribution(type: Copy) {
 }
 
 task release(dependsOn: backupReleaseDistribution) {
-    logger.quiet 'release ...'
+    doFirst {
+        logger.quiet 'release start...'
+
+    }
+    doLast {
+        logger.quiet 'release end...'
+    }
 }
 
 tasks.addRule("Pattern: increment<Classifier>Version – Increments the project version classifier.") { String taskName ->
     if (taskName.startsWith('increment') && taskName.endsWith('Version')) {
-        task(taskName) {
+        task(taskName) doLast {
             String classifier = (taskName - 'increment' - 'Version').toLowerCase()
             String currentVersion = version.toString()
 
@@ -145,7 +163,7 @@ class ProjectVersion {
 
 
 group 'org.example'
-version '1.0-SNAPSHOT'
+//version '1.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
