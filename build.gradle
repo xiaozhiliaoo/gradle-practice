@@ -1,7 +1,21 @@
 apply plugin: 'war'
 ext.versionFile = file('version.properties')
 
+// task动作
+task printVersion {
+    println "printVersion action start ..."
+    doFirst {
+        println "do First Version: $version"
+    }
+    doLast {
+        println "do Last Version: $version"
+
+    }
+}
+
+// task配置
 task loadVersion {
+    println "loadVersion ..."
     project.version = readVersion()
 }
 
@@ -21,14 +35,46 @@ ProjectVersion readVersion() {
     new ProjectVersion(versionProps.major.toInteger(), versionProps.minor.toInteger(), versionProps.release.toBoolean())
 }
 
-task makeReleaseVersion(group: 'versioning', description: 'Makes project a release version.')  {
-    version.release = true
-    ant.propertyfile(file: versionFile) {
-        entry(key: 'release', type: 'string', operation: '=', value: 'true')
+
+gradle.taskGraph.whenReady { TaskExecutionGraph taskGraph ->
+    //查看执行图是否包含release task
+    if (taskGraph.hasTask(release)) {
+        print "release whenReady invoke...."
+        if (!version.release) {
+            version.release = true
+            ant.propertyfile(file: versionFile) {
+                entry(key: 'release', type: 'string', operation: '=', value: 'true')
+            }
+        }
     }
 }
 
-task createDistribution(type: Zip, dependsOn: makeReleaseVersion) {
+class ReleaseVersionListener implements TaskExecutionGraphListener {
+    final static String releaseTaskPath = ':release'
+
+    @Override
+    void graphPopulated(TaskExecutionGraph taskGraph) {
+        if (taskGraph.hasTask(releaseTaskPath)) {
+            print "ReleaseVersionListener invoke..."
+            List<Task> allTasks = taskGraph.allTasks
+            Task releaseTask = allTasks.find { it.path == releaseTaskPath }
+            Project project = releaseTask.project
+
+            if (!project.version.release) {
+                project.version.release = true
+                project.ant.propertyfile(file: project.versionFile) {
+                    entry(key: 'release', type: 'string', operation: '=', value: 'true')
+                }
+            }
+        }
+    }
+}
+
+gradle.taskGraph.addTaskExecutionGraphListener(new ReleaseVersionListener())
+
+task createDistribution(type: Zip) {
+    println "createDistribution ..."
+
     from war.outputs.files
 
     from(sourceSets*.allSource) {
@@ -41,13 +87,39 @@ task createDistribution(type: Zip, dependsOn: makeReleaseVersion) {
 }
 
 task backupReleaseDistribution(type: Copy) {
+    println "backupReleaseDistribution ..."
     from createDistribution.outputs.files
     into "$buildDir/backup"
 }
 
-task release(dependsOn: backupReleaseDistribution)  {
-    logger.quiet 'Releasing the project...'
+task release(dependsOn: backupReleaseDistribution) {
+    logger.quiet 'release ...'
 }
+
+tasks.addRule("Pattern: increment<Classifier>Version – Increments the project version classifier.") { String taskName ->
+    if (taskName.startsWith('increment') && taskName.endsWith('Version')) {
+        task(taskName) {
+            String classifier = (taskName - 'increment' - 'Version').toLowerCase()
+            String currentVersion = version.toString()
+
+            switch (classifier) {
+                case 'major': ++version.major
+                    break
+                case 'minor': ++version.minor
+                    break
+                default: throw new GradleException("Invalid version type '$classifier. Allowed types: ['Major', 'Minor']")
+            }
+
+            String newVersion = version.toString()
+            logger.info "Incrementing $classifier project version: $currentVersion -> $newVersion"
+
+            ant.propertyfile(file: versionFile) {
+                entry(key: classifier, type: 'int', operation: '+', value: 1)
+            }
+        }
+    }
+}
+
 
 class ProjectVersion {
     Integer major
@@ -69,4 +141,21 @@ class ProjectVersion {
     String toString() {
         "$major.$minor${release ? '' : '-SNAPSHOT'}"
     }
+}
+
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+}
+
+test {
+    useJUnitPlatform()
 }
