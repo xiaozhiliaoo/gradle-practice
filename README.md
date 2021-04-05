@@ -1,2 +1,2 @@
 # gradle-practice
-gradle sample
+gradle sample from book [gradle in action](https://github.com/bmuschko/gradle-in-action-source)
