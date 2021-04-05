@@ -1,2 +1,5 @@
 rootProject.name = 'gradle-practice'
+include 'web'
+include 'model'
+include 'repository'
 

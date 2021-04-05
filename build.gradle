@@ -177,3 +177,34 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+
+allprojects {
+    group = 'com.manning.gia'
+    version = '0.1'
+}
+
+subprojects {
+    apply plugin: 'java'
+}
+
+project(':model') {
+    apply plugin: 'java'
+}
+
+project(':repository') {
+    apply plugin: 'java'
+}
+
+project(':web') {
+
+    apply plugin: 'war'
+
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        runtime 'javax.servlet:jstl:1.1.2'
+    }
+}
