@@ -1,11 +1,11 @@
 buildscript {
     repositories {
-        maven { url "file://$projectDir/../../repo" }
+        maven { url "file://$projectDir/../repo" }
         mavenCentral()
     }
 
     dependencies {
-        //classpath 'org.plugins:hi-plugin:1.0'
+        classpath 'org.plugins:hi-plugin:1.0'
     }
 }
 
